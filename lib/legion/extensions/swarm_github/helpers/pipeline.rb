@@ -28,13 +28,13 @@ module Legion
           end
 
           def next_state(current)
-            case current
-            when :received   then :found
-            when :found      then :fixing
-            when :fixing     then :validating
-            when :validating then :approved
-            when :approved   then :pr_open
-            end
+            {
+              received:   :found,
+              found:      :fixing,
+              fixing:     :validating,
+              validating: :approved,
+              approved:   :pr_open
+            }[current]
           end
         end
       end
