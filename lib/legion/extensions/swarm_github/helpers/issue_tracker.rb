@@ -16,16 +16,16 @@ module Legion
           def track(repo:, issue_number:, title:, labels: [])
             key = "#{repo}##{issue_number}"
             @issues[key] = {
-              repo:          repo,
-              issue_number:  issue_number,
-              title:         title,
-              labels:        labels,
-              state:         :received,
-              fix_attempts:  0,
-              validations:   [],
-              pr_number:     nil,
-              created_at:    Time.now.utc,
-              updated_at:    Time.now.utc
+              repo:         repo,
+              issue_number: issue_number,
+              title:        title,
+              labels:       labels,
+              state:        :received,
+              fix_attempts: 0,
+              validations:  [],
+              pr_number:    nil,
+              created_at:   Time.now.utc,
+              updated_at:   Time.now.utc
             }
             key
           end

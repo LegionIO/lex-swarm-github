@@ -13,7 +13,7 @@ module Legion
           PIPELINE_ROLES = %i[finder fixer validator pr_swarm].freeze
 
           # Validation
-          ADVERSARIAL_REVIEW_K = 3    # number of independent validators
+          ADVERSARIAL_REVIEW_K = 3 # number of independent validators
           MAX_FIX_ATTEMPTS     = 3
           STALE_TIMEOUT        = 86_400 # 24 hours
 
@@ -34,7 +34,6 @@ module Legion
             when :fixing     then :validating
             when :validating then :approved
             when :approved   then :pr_open
-            else nil
             end
           end
         end
