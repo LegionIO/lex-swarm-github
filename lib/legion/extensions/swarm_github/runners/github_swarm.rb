@@ -76,7 +76,8 @@ module Legion
             status = Helpers::Pipeline::STATES.to_h do |state|
               [state, issue_tracker.by_state(state).size]
             end
-            Legion::Logging.debug "[github-swarm] pipeline: total=#{issue_tracker.count} #{status.select { |_, v| v > 0 }.map { |k, v| "#{k}=#{v}" }.join(' ')}"
+            summary = status.select { |_, v| v.positive? }.map { |k, v| "#{k}=#{v}" }.join(' ')
+            Legion::Logging.debug "[github-swarm] pipeline: total=#{issue_tracker.count} #{summary}"
             { states: status, total: issue_tracker.count }
           end
 
