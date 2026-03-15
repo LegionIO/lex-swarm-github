@@ -95,6 +95,12 @@ Legion::Extensions::SwarmGithub::Runners::GithubSwarm.pipeline_status
 Legion::Extensions::SwarmGithub::Runners::GithubSwarm.get_issue(key: "LegionIO/lex-tick#42")
 ```
 
+## Actors
+
+| Actor | Interval | What It Does |
+|-------|----------|--------------|
+| `StaleIssues` | Every 3600s | Marks non-terminal issues as `:stale` when they have not been updated within `STALE_TIMEOUT` (86400s), enforcing the stale timeout |
+
 ## Development
 
 ```bash
