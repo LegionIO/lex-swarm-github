@@ -81,6 +81,22 @@ module Legion
             { states: status, total: issue_tracker.count }
           end
 
+          def mark_stale_issues(**)
+            terminal  = %i[approved pr_open rejected stale]
+            now       = Time.now.utc
+            timeout   = Helpers::Pipeline::STALE_TIMEOUT
+            stale_keys = []
+            issue_tracker.issues.each do |key, issue|
+              next if terminal.include?(issue[:state])
+              next unless now - issue[:updated_at] > timeout
+
+              issue_tracker.transition(key, :stale)
+              stale_keys << key
+            end
+            Legion::Logging.debug "[swarm-github] stale check: checked=#{issue_tracker.count} stale=#{stale_keys.size}"
+            { checked: issue_tracker.count, marked_stale: stale_keys.size, stale_keys: stale_keys }
+          end
+
           private
 
           def issue_tracker

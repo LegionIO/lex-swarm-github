@@ -71,4 +71,43 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::GithubSwarm do
       expect(status[:states][:received]).to eq(2)
     end
   end
+
+  describe '#mark_stale_issues' do
+    it 'returns zero marked when tracker is empty' do
+      result = client.mark_stale_issues
+      expect(result[:marked_stale]).to eq(0)
+      expect(result[:stale_keys]).to eq([])
+    end
+
+    it 'does not mark a freshly ingested issue as stale' do
+      client.ingest_issue(repo: 'org/repo', issue_number: 1, title: 'fresh')
+      result = client.mark_stale_issues
+      expect(result[:marked_stale]).to eq(0)
+    end
+
+    it 'marks a non-terminal issue as stale when past timeout' do
+      client.ingest_issue(repo: 'org/repo', issue_number: 1, title: 'old')
+      tracker = client.send(:issue_tracker)
+      tracker.issues['org/repo#1'][:updated_at] = Time.now.utc - 90_000
+      result = client.mark_stale_issues
+      expect(result[:marked_stale]).to eq(1)
+      expect(result[:stale_keys]).to include('org/repo#1')
+    end
+
+    it 'does not mark a terminal issue as stale' do
+      client.ingest_issue(repo: 'org/repo', issue_number: 1, title: 'done')
+      tracker = client.send(:issue_tracker)
+      tracker.issues['org/repo#1'][:state] = :approved
+      tracker.issues['org/repo#1'][:updated_at] = Time.now.utc - 90_000
+      result = client.mark_stale_issues
+      expect(result[:marked_stale]).to eq(0)
+    end
+
+    it 'reports correct checked count' do
+      client.ingest_issue(repo: 'org/repo', issue_number: 1, title: 't1')
+      client.ingest_issue(repo: 'org/repo', issue_number: 2, title: 't2')
+      result = client.mark_stale_issues
+      expect(result[:checked]).to eq(2)
+    end
+  end
 end
