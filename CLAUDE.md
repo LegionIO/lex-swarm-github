@@ -27,11 +27,15 @@ lib/legion/extensions/swarm_github/
     issue_tracker.rb # IssueTracker class - keyed by "repo#issue_number"
   runners/
     github_swarm.rb  # ingest_issue, claim_issue, start_fix, submit_validation, attach_pr,
-                     # get_issue, issues_by_state, pipeline_status
+                     # get_issue, issues_by_state, pipeline_status, mark_stale_issues
+  actors/
+    stale_issues.rb  # StaleIssues - Every 3600s, calls mark_stale_issues
 spec/
   legion/extensions/swarm_github/
     runners/
       github_swarm_spec.rb
+    actors/
+      stale_issues_spec.rb
     client_spec.rb
 ```
 
@@ -69,6 +73,12 @@ Issue structure:
 
 `attach_pr` sets `pr_number` and transitions state to `:pr_open`.
 
+## Actors
+
+| Actor | Interval | Runner Method | What It Does |
+|-------|----------|---------------|--------------|
+| `StaleIssues` | Every 3600s | `mark_stale_issues` | Iterates all tracked issues; transitions any non-terminal issue (not `:approved`, `:pr_open`, `:rejected`, or `:stale`) that has not been updated within `STALE_TIMEOUT` (86400s) to `:stale` state |
+
 ## Runner Logic Notes
 
 `start_fix` calls both `transition(key, :fixing)` AND `record_fix_attempt`. If `fix_attempts > MAX_FIX_ATTEMPTS`, returns `{ error: :max_attempts_exceeded }`.
@@ -83,6 +93,7 @@ Issue structure:
 
 ## Development Notes
 
-- `STALE_TIMEOUT` is defined but not enforced — issues do not auto-transition to `:stale`
+- `STALE_TIMEOUT` is now enforced by the `StaleIssues` actor — issues inactive for 24+ hours auto-transition to `:stale`
+- `mark_stale_issues` checks `updated_at` (not `created_at`) — issues that receive any transition reset their staleness clock
 - Labels in the issue tracker are the `swarm:*` labels (e.g., `swarm:fixing`); other GitHub labels from ingest are preserved in the initial `labels:` array but overwritten on first transition
 - `check_validation_consensus` checks approvals and rejections independently — a tie does not resolve
