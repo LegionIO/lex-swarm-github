@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'legion/extensions/swarm_github/helpers/pipeline'
+require 'legion/extensions/swarm_github/helpers/mesh_integration'
 require 'legion/extensions/swarm_github/runners/pull_request_reviewer'
 require 'legion/extensions/swarm_github/runners/review_poster'
 require 'legion/extensions/swarm_github/runners/review_notifier'
@@ -107,6 +108,91 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::PrPipeline do
       result = pipeline.run_review_pipeline_from_webhook(payload: payload)
       expect(result[:skipped]).to be true
       expect(result[:reason]).to eq('action not reviewable')
+    end
+  end
+
+  describe '#handle_mesh_review_request' do
+    let(:review_result) do
+      { review: { status: 'reviewed' }, post: { posted: true, comments_count: 2 }, notify: { notified: true } }
+    end
+
+    before do
+      allow(pipeline).to receive(:run_review_pipeline).and_return(review_result)
+      allow(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_start)
+      allow(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_complete)
+    end
+
+    it 'returns success: false when owner is missing' do
+      result = pipeline.handle_mesh_review_request(payload: { repo: 'myrepo', pull_number: 1 })
+      expect(result[:success]).to be false
+      expect(result[:reason]).to eq(:missing_params)
+    end
+
+    it 'returns success: false when repo is missing' do
+      result = pipeline.handle_mesh_review_request(payload: { owner: 'org', pull_number: 1 })
+      expect(result[:success]).to be false
+      expect(result[:reason]).to eq(:missing_params)
+    end
+
+    it 'returns success: false when pull_number is missing' do
+      result = pipeline.handle_mesh_review_request(payload: { owner: 'org', repo: 'myrepo' })
+      expect(result[:success]).to be false
+      expect(result[:reason]).to eq(:missing_params)
+    end
+
+    it 'calls run_review_pipeline with extracted params' do
+      expect(pipeline).to receive(:run_review_pipeline)
+        .with(hash_including(owner: 'org', repo: 'myrepo', pull_number: 42))
+        .and_return(review_result)
+
+      pipeline.handle_mesh_review_request(payload: { owner: 'org', repo: 'myrepo', pull_number: 42 })
+    end
+
+    it 'merges success: true into pipeline result' do
+      result = pipeline.handle_mesh_review_request(
+        payload: { owner: 'org', repo: 'myrepo', pull_number: 42 }
+      )
+      expect(result[:success]).to be true
+      expect(result[:review][:status]).to eq('reviewed')
+    end
+
+    it 'accepts string-keyed payload' do
+      expect(pipeline).to receive(:run_review_pipeline)
+        .with(hash_including(owner: 'org', repo: 'myrepo', pull_number: 5))
+        .and_return(review_result)
+
+      pipeline.handle_mesh_review_request(payload: { 'owner' => 'org', 'repo' => 'myrepo', 'pull_number' => 5 })
+    end
+
+    it 'records workspace start before pipeline runs' do
+      expect(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_start).ordered
+      expect(pipeline).to receive(:run_review_pipeline).ordered.and_return(review_result)
+
+      pipeline.handle_mesh_review_request(payload: { owner: 'org', repo: 'myrepo', pull_number: 1 })
+    end
+
+    it 'records workspace complete after pipeline runs' do
+      expect(pipeline).to receive(:run_review_pipeline).ordered.and_return(review_result)
+      expect(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_complete).ordered
+
+      pipeline.handle_mesh_review_request(payload: { owner: 'org', repo: 'myrepo', pull_number: 1 })
+    end
+
+    it 'uses provided charter_id for workspace calls' do
+      expect(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_start)
+        .with(hash_including(charter_id: 'my-charter'))
+
+      pipeline.handle_mesh_review_request(
+        payload:    { owner: 'org', repo: 'myrepo', pull_number: 1 },
+        charter_id: 'my-charter'
+      )
+    end
+
+    it 'generates a charter_id when none provided' do
+      expect(Legion::Extensions::SwarmGithub::Helpers::MeshIntegration).to receive(:record_review_start)
+        .with(hash_including(charter_id: 'mesh-review-org-myrepo-42'))
+
+      pipeline.handle_mesh_review_request(payload: { owner: 'org', repo: 'myrepo', pull_number: 42 })
     end
   end
 end

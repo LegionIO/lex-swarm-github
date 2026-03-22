@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1] - 2026-03-22
+
+### Added
+- `Helpers::MeshIntegration` module with `register_reviewer`, `record_review_start`, and `record_review_complete` methods; all external calls guarded with `defined?()` so lex-mesh and lex-swarm remain optional deps
+- `Runners::PrPipeline#handle_mesh_review_request` — entry point for mesh-delegated reviews; extracts owner/repo/pull_number from symbol- or string-keyed payload, tracks review lifecycle in the swarm workspace, and returns pipeline result merged with `success: true`
+- 22 new specs covering `Helpers::MeshIntegration` and `handle_mesh_review_request` (availability guards, ordered workspace tracking, charter_id generation, missing-param guard)
+
 ## [0.1.2] - 2026-03-21
 
 ### Added

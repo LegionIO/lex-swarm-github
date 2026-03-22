@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../helpers/mesh_integration'
+
 module Legion
   module Extensions
     module SwarmGithub
@@ -31,6 +33,27 @@ module Legion
 
             run_review_pipeline(owner: owner, repo: repo, pull_number: pull_number,
                                 slack_channel: slack_channel)
+          end
+
+          def handle_mesh_review_request(payload:, charter_id: nil, **)
+            owner = payload[:owner] || payload['owner']
+            repo = payload[:repo] || payload['repo']
+            pull_number = payload[:pull_number] || payload['pull_number']
+
+            return { success: false, reason: :missing_params } unless owner && repo && pull_number
+
+            cid = charter_id || "mesh-review-#{owner}-#{repo}-#{pull_number}"
+            Helpers::MeshIntegration.record_review_start(
+              charter_id: cid, owner: owner, repo: repo, pull_number: pull_number
+            )
+
+            result = run_review_pipeline(owner: owner, repo: repo, pull_number: pull_number)
+
+            Helpers::MeshIntegration.record_review_complete(
+              charter_id: cid, owner: owner, repo: repo, pull_number: pull_number, result: result
+            )
+
+            result.merge(success: true)
           end
         end
       end

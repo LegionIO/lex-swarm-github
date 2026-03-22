@@ -3,6 +3,7 @@
 require 'legion/extensions/swarm_github/version'
 require 'legion/extensions/swarm_github/helpers/pipeline'
 require 'legion/extensions/swarm_github/helpers/issue_tracker'
+require 'legion/extensions/swarm_github/helpers/mesh_integration'
 require 'legion/extensions/swarm_github/runners/github_swarm'
 require 'legion/extensions/swarm_github/runners/pull_request_reviewer'
 require 'legion/extensions/swarm_github/helpers/diff_chunker'
