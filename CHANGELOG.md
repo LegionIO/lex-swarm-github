@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2026-03-21
+
+### Added
+- `Runners::PullRequestReviewer` with `review_pull_request` method for LLM-powered code review
+- Fetches PR diff via lex-github Client, generates review via Legion::LLM
+- Returns structured comments with file, line, severity, and message
+
 ## [0.1.1] - 2026-03-14
 
 ### Added
