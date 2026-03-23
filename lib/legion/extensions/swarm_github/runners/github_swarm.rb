@@ -10,17 +10,17 @@ module Legion
 
           def ingest_issue(repo:, issue_number:, title:, labels: [], **)
             key = issue_tracker.track(repo: repo, issue_number: issue_number, title: title, labels: labels)
-            Legion::Logging.info "[github-swarm] ingested: key=#{key} title=#{title}"
+            log.info "[github-swarm] ingested: key=#{key} title=#{title}"
             { tracked: true, key: key, state: :received }
           end
 
           def claim_issue(key:, **)
             result = issue_tracker.transition(key, :found)
             if result == :found
-              Legion::Logging.info "[github-swarm] claimed: key=#{key}"
+              log.info "[github-swarm] claimed: key=#{key}"
               { claimed: true, state: :found }
             else
-              Legion::Logging.debug "[github-swarm] claim failed: key=#{key} result=#{result}"
+              log.debug "[github-swarm] claim failed: key=#{key} result=#{result}"
               { error: result || :not_found }
             end
           end
@@ -29,10 +29,10 @@ module Legion
             issue_tracker.transition(key, :fixing)
             attempt = issue_tracker.record_fix_attempt(key)
             if attempt && attempt > Helpers::Pipeline::MAX_FIX_ATTEMPTS
-              Legion::Logging.warn "[github-swarm] max attempts exceeded: key=#{key} attempts=#{attempt}"
+              log.warn "[github-swarm] max attempts exceeded: key=#{key} attempts=#{attempt}"
               { error: :max_attempts_exceeded, attempts: attempt }
             else
-              Legion::Logging.info "[github-swarm] fix started: key=#{key} attempt=#{attempt}"
+              log.info "[github-swarm] fix started: key=#{key} attempt=#{attempt}"
               { fixing: true, attempt: attempt }
             end
           end
@@ -41,10 +41,10 @@ module Legion
             consensus = issue_tracker.record_validation(key, validator: validator,
                                                             approved: approved, reason: reason)
             if consensus
-              Legion::Logging.info "[github-swarm] validation: key=#{key} validator=#{validator} approved=#{approved} consensus=#{consensus}"
+              log.info "[github-swarm] validation: key=#{key} validator=#{validator} approved=#{approved} consensus=#{consensus}"
               { recorded: true, consensus: consensus }
             else
-              Legion::Logging.debug "[github-swarm] validation failed: key=#{key} not found"
+              log.debug "[github-swarm] validation failed: key=#{key} not found"
               { error: :not_found }
             end
           end
@@ -52,23 +52,23 @@ module Legion
           def attach_pr(key:, pr_number:, **)
             result = issue_tracker.attach_pr(key, pr_number: pr_number)
             if result
-              Legion::Logging.info "[github-swarm] PR attached: key=#{key} pr=##{pr_number}"
+              log.info "[github-swarm] PR attached: key=#{key} pr=##{pr_number}"
               { attached: true, pr_number: pr_number }
             else
-              Legion::Logging.debug "[github-swarm] PR attach failed: key=#{key} not found"
+              log.debug "[github-swarm] PR attach failed: key=#{key} not found"
               { error: :not_found }
             end
           end
 
           def get_issue(key:, **)
             issue = issue_tracker.get(key)
-            Legion::Logging.debug "[github-swarm] get: key=#{key} found=#{!issue.nil?}"
+            log.debug "[github-swarm] get: key=#{key} found=#{!issue.nil?}"
             issue ? { found: true, issue: issue } : { found: false }
           end
 
           def issues_by_state(state:, **)
             issues = issue_tracker.by_state(state)
-            Legion::Logging.debug "[github-swarm] by_state: state=#{state} count=#{issues.size}"
+            log.debug "[github-swarm] by_state: state=#{state} count=#{issues.size}"
             { issues: issues, count: issues.size }
           end
 
@@ -77,7 +77,7 @@ module Legion
               [state, issue_tracker.by_state(state).size]
             end
             summary = status.select { |_, v| v.positive? }.map { |k, v| "#{k}=#{v}" }.join(' ')
-            Legion::Logging.debug "[github-swarm] pipeline: total=#{issue_tracker.count} #{summary}"
+            log.debug "[github-swarm] pipeline: total=#{issue_tracker.count} #{summary}"
             { states: status, total: issue_tracker.count }
           end
 
@@ -93,7 +93,7 @@ module Legion
               issue_tracker.transition(key, :stale)
               stale_keys << key
             end
-            Legion::Logging.debug "[swarm-github] stale check: checked=#{issue_tracker.count} stale=#{stale_keys.size}"
+            log.debug "[swarm-github] stale check: checked=#{issue_tracker.count} stale=#{stale_keys.size}"
             { checked: issue_tracker.count, marked_stale: stale_keys.size, stale_keys: stale_keys }
           end
 
