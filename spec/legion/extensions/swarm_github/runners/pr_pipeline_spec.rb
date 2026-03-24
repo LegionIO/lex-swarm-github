@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'legion/extensions/swarm_github/client'
 require 'legion/extensions/swarm_github/helpers/pipeline'
 require 'legion/extensions/swarm_github/helpers/mesh_integration'
 require 'legion/extensions/swarm_github/runners/pull_request_reviewer'
@@ -72,6 +73,29 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::PrPipeline do
       expect(result[:review][:status]).to eq('skipped')
       expect(result[:post]).to be_nil
       expect(result[:notify]).to be_nil
+    end
+  end
+
+  describe '#run_review_pipeline with issue bridge' do
+    let(:client) { Legion::Extensions::SwarmGithub::Client.new }
+
+    before do
+      client.ingest_issue(repo: 'owner/repo', issue_number: 5, title: 'Fix bug')
+      client.claim_issue(key: 'owner/repo#5')
+      client.start_fix(key: 'owner/repo#5')
+      allow(client).to receive(:review_pull_request).and_return(
+        { status: 'reviewed', files_reviewed: 1, summary: 'OK', comments: [] }
+      )
+      allow(client).to receive(:post_review).and_return({ posted: true, review_id: 1, comments_count: 0 })
+      allow(client).to receive(:notify_review).and_return({ notified: false, reason: 'lex-slack not available' })
+    end
+
+    context 'when PR is linked to a tracked issue' do
+      it 'records review as validation on the linked issue' do
+        client.run_review_pipeline(owner: 'owner', repo: 'repo', pull_number: 1, issue_number: 5)
+        issue = client.get_issue(key: 'owner/repo#5')[:issue]
+        expect(issue[:validations]).not_to be_empty
+      end
     end
   end
 

@@ -15,7 +15,8 @@ module Legion
 
             result = Legion::Extensions::Github::Client.new.create_review(
               owner: owner, repo: repo, pull_number: pull_number,
-              body: body, comments: inline_comments
+              body: body, comments: inline_comments,
+              event: review_event(review[:comments])
             )
 
             review_id = result.dig(:result, 'id') || result.dig(:result, :id)
@@ -25,6 +26,13 @@ module Legion
           end
 
           private
+
+          def review_event(comments)
+            severities = (comments || []).map { |c| c[:severity]&.to_s&.downcase }
+            return 'REQUEST_CHANGES' if severities.any? { |s| %w[critical high].include?(s) }
+
+            'APPROVE'
+          end
 
           def format_review_body(review)
             parts = ["**Legion AI Review** (#{review[:files_reviewed]} file#{'s' if review[:files_reviewed] != 1} reviewed)"]

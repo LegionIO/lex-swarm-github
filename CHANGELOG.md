@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] - 2026-03-24
+
+### Changed
+- Wire DiffChunker into PullRequestReviewer for chunked large-PR review
+- Add APPROVE/REQUEST_CHANGES review events based on comment severity
+- Bridge review results to issue tracker validation
+
+### Fixed
+- ReviewNotifier Slack client instantiation passing stray kwargs
+
 ## [0.2.3] - 2026-03-23
 
 ### Changed

@@ -45,6 +45,26 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer do
       end
     end
 
+    context 'when diff exceeds max_chars' do
+      let(:large_files) do
+        [
+          { filename: 'a.rb', patch: 'x' * 7000 },
+          { filename: 'b.rb', patch: 'y' * 7000 }
+        ]
+      end
+
+      before do
+        stub_const('Legion::LLM', Module.new)
+        allow(reviewer).to receive(:fetch_pr_files).and_return(large_files)
+        allow(Legion::LLM).to receive(:chat).and_return('{"summary":"ok","comments":[]}')
+      end
+
+      it 'calls LLM multiple times for chunked diffs' do
+        reviewer.review_pull_request(owner: 'owner', repo: 'repo', pull_number: 1)
+        expect(Legion::LLM).to have_received(:chat).at_least(2).times
+      end
+    end
+
     context 'when PR has multiple files with comments' do
       let(:files) do
         [

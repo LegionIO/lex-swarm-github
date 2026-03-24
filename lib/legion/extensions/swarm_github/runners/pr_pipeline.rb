@@ -10,8 +10,9 @@ module Legion
           REVIEWABLE_ACTIONS = %w[opened synchronize reopened].freeze
           DEFAULT_SLACK_CHANNEL = '#code-reviews'
 
-          def run_review_pipeline(owner:, repo:, pull_number:, slack_channel: nil, **)
+          def run_review_pipeline(owner:, repo:, pull_number:, slack_channel: nil, **opts)
             channel = slack_channel || DEFAULT_SLACK_CHANNEL
+            issue_number = opts[:issue_number]
 
             review = review_pull_request(owner: owner, repo: repo, pull_number: pull_number)
             return { review: review, post: nil, notify: nil } unless review[:status] == 'reviewed'
@@ -20,7 +21,10 @@ module Legion
             notify = notify_review(channel: channel, pull_ref: "#{owner}/#{repo}##{pull_number}",
                                    review: review, post_result: post)
 
-            { review: review, post: post, notify: notify }
+            result = { review: review, post: post, notify: notify }
+            bridge_review_to_issue(repo: "#{owner}/#{repo}", issue_number: issue_number,
+                                   review_result: result)
+            result
           end
 
           def run_review_pipeline_from_webhook(payload:, slack_channel: nil, **)
@@ -33,6 +37,18 @@ module Legion
 
             run_review_pipeline(owner: owner, repo: repo, pull_number: pull_number,
                                 slack_channel: slack_channel)
+          end
+
+          def bridge_review_to_issue(repo:, issue_number:, review_result:)
+            return unless issue_number
+
+            review_comments = review_result.dig(:review, :comments) || []
+            approved = review_comments.none? { |c| %w[critical high].include?(c[:severity]&.to_s&.downcase) }
+            @issue_tracker&.record_validation(
+              "#{repo}##{issue_number}",
+              validator: :code_review,
+              approved:  approved
+            )
           end
 
           def handle_mesh_review_request(payload:, charter_id: nil, **)

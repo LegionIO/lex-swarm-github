@@ -11,7 +11,7 @@ module Legion
             return { notified: false, reason: 'lex-slack not available' } unless defined?(Legion::Extensions::Slack::Client)
 
             message = format_slack_message(pull_ref: pull_ref, review: review, post_result: post_result)
-            result = Legion::Extensions::Slack::Client.new(**).post_message(
+            result = Legion::Extensions::Slack::Client.new.post_message(
               channel: channel, text: message
             )
 

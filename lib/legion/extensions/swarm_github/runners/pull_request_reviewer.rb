@@ -9,8 +9,7 @@ module Legion
             files = fetch_pr_files(owner: owner, repo: repo, pull_number: pull_number)
             return { status: 'skipped', reason: 'no files' } if files.empty?
 
-            diff_text = files.map { |f| "#{f[:filename]}:\n#{f[:patch]}" }.join("\n\n")
-            review = generate_review(diff_text)
+            review = generate_review(files)
 
             {
               status:         'reviewed',
@@ -33,24 +32,43 @@ module Legion
             []
           end
 
-          def generate_review(diff_text)
-            return { summary: 'LLM unavailable', comments: [] } unless defined?(Legion::LLM)
-
-            result = Legion::LLM.chat(
-              message: "#{code_review_prompt}\n\n#{diff_text[0..12_000]}",
-              caller:  { extension: 'lex-swarm-github' }
-            )
-            ::JSON.parse(result[:content] || '{}', symbolize_names: true)
+          def generate_review(files)
+            chunks = Helpers::DiffChunker.chunk_files(files)
+            reviews = chunks.map do |chunk|
+              diff_text = chunk.map { |f| "--- #{f[:filename]} ---\n#{f[:patch]}" }.join("\n\n")
+              prompt = code_review_prompt(diff_text)
+              response = Legion::LLM.chat(message: prompt, caller: { extension: 'lex-swarm-github' })
+              parse_review_response(response)
+            end
+            merge_chunk_reviews(reviews)
           rescue StandardError => e
-            { summary: "Review failed: #{e.message}", comments: [] }
+            Legion::Logging::Logger.warn "Review generation failed: #{e.message}"
+            { summary: 'Review generation failed', comments: [] }
           end
 
-          def code_review_prompt
+          def merge_chunk_reviews(reviews)
+            merged_comments = reviews.flat_map { |r| r[:comments] || [] }
+            summaries = reviews.map { |r| r[:summary] }.compact
+            {
+              summary:  summaries.join("\n\n"),
+              comments: merged_comments
+            }
+          end
+
+          def parse_review_response(response)
+            Legion::JSON.load(response)
+          rescue StandardError
+            { summary: response.to_s, comments: [] }
+          end
+
+          def code_review_prompt(diff_text)
             <<~PROMPT
               Review this code diff. Return JSON with:
               - "summary": 1-2 sentence overall assessment
               - "comments": array of {"file", "line", "severity", "message"}
               Severity: info, warning, error. Focus on bugs and security issues.
+
+              #{diff_text}
             PROMPT
           end
         end
