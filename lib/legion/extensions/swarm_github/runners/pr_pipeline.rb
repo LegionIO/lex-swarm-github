@@ -10,8 +10,9 @@ module Legion
           REVIEWABLE_ACTIONS = %w[opened synchronize reopened].freeze
           DEFAULT_SLACK_CHANNEL = '#code-reviews'
 
-          def run_review_pipeline(owner:, repo:, pull_number:, slack_channel: nil, issue_number: nil, **)
+          def run_review_pipeline(owner:, repo:, pull_number:, slack_channel: nil, **opts)
             channel = slack_channel || DEFAULT_SLACK_CHANNEL
+            issue_number = opts[:issue_number]
 
             review = review_pull_request(owner: owner, repo: repo, pull_number: pull_number)
             return { review: review, post: nil, notify: nil } unless review[:status] == 'reviewed'
@@ -46,7 +47,7 @@ module Legion
             @issue_tracker&.record_validation(
               "#{repo}##{issue_number}",
               validator: :code_review,
-              approved: approved
+              approved:  approved
             )
           end
 
