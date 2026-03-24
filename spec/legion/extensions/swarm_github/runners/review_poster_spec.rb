@@ -61,6 +61,42 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ReviewPoster do
       end
     end
 
+    context 'when review has no critical or high severity comments' do
+      let(:github_client) { double('Github::Client') }
+      let(:review) { { status: 'reviewed', files_reviewed: 1, summary: 'Looks good', comments: [{ severity: 'info', message: 'nit' }] } }
+
+      before do
+        stub_const('Legion::Extensions::Github::Client', Class.new)
+        allow(Legion::Extensions::Github::Client).to receive(:new).and_return(github_client)
+        allow(github_client).to receive(:create_review).and_return({ result: { 'id' => 1 } })
+      end
+
+      it 'posts with APPROVE event' do
+        poster.post_review(owner: 'owner', repo: 'repo', pull_number: 1, review: review)
+        expect(github_client).to have_received(:create_review).with(
+          hash_including(event: 'APPROVE')
+        )
+      end
+    end
+
+    context 'when review has critical severity comments' do
+      let(:github_client) { double('Github::Client') }
+      let(:review) { { status: 'reviewed', files_reviewed: 1, summary: 'Issues found', comments: [{ severity: 'critical', message: 'bug' }] } }
+
+      before do
+        stub_const('Legion::Extensions::Github::Client', Class.new)
+        allow(Legion::Extensions::Github::Client).to receive(:new).and_return(github_client)
+        allow(github_client).to receive(:create_review).and_return({ result: { 'id' => 2 } })
+      end
+
+      it 'posts with REQUEST_CHANGES event' do
+        poster.post_review(owner: 'owner', repo: 'repo', pull_number: 1, review: review)
+        expect(github_client).to have_received(:create_review).with(
+          hash_including(event: 'REQUEST_CHANGES')
+        )
+      end
+    end
+
     context 'when lex-github is not available' do
       it 'returns not_available error' do
         result = poster.post_review(owner: 'org', repo: 'repo', pull_number: 42, review: review_result)
