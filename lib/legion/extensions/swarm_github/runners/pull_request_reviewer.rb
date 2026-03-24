@@ -37,7 +37,8 @@ module Legion
             return { summary: 'LLM unavailable', comments: [] } unless defined?(Legion::LLM)
 
             result = Legion::LLM.chat(
-              message: "#{code_review_prompt}\n\n#{diff_text[0..12_000]}"
+              message: "#{code_review_prompt}\n\n#{diff_text[0..12_000]}",
+              caller:  { extension: 'lex-swarm-github' }
             )
             ::JSON.parse(result[:content] || '{}', symbolize_names: true)
           rescue StandardError => e
