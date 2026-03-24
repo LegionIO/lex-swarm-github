@@ -68,6 +68,26 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ReviewNotifier do
       end
     end
 
+    context 'when instantiating Slack client' do
+      let(:slack_client) { double('Slack::Client') }
+      let(:slack_client_class) { Class.new }
+
+      before do
+        stub_const('Legion::Extensions::Slack::Client', slack_client_class)
+        allow(slack_client_class).to receive(:new).and_return(slack_client)
+        allow(slack_client).to receive(:post_message).and_return({ ok: true, ts: '1' })
+      end
+
+      it 'instantiates Slack client with no arguments' do
+        notifier.notify_review(
+          channel: '#reviews', pull_ref: 'owner/repo#1',
+          review: review_result, post_result: post_result,
+          extra_kwarg: 'value'
+        )
+        expect(slack_client_class).to have_received(:new).with(no_args)
+      end
+    end
+
     context 'when lex-slack is not available' do
       it 'returns not_available' do
         result = notifier.notify_review(
