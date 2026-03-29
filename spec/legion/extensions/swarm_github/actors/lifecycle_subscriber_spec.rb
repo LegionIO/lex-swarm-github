@@ -81,7 +81,8 @@ RSpec.describe Legion::Extensions::SwarmGithub::Actor::LifecycleSubscriber do
         expect(Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle)
           .to have_received(:run_lifecycle).with(
             generation: generation,
-            review:     hash_including(verdict: 'approve')
+            review:     hash_including(verdict: 'approve'),
+            review_k:   nil
           )
       end
 

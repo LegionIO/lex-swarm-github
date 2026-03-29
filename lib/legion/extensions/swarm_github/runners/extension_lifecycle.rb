@@ -7,7 +7,7 @@ module Legion
         module ExtensionLifecycle
           extend self
 
-          def run_lifecycle(generation:, review:)
+          def run_lifecycle(generation:, review:, review_k: nil)
             config = github_config
             return { success: false, error: :github_not_enabled } unless config[:enabled]
             return { success: false, error: :target_repo_missing } unless config[:target_repo]
@@ -31,11 +31,16 @@ module Legion
             label_pull_request(owner: owner, repo: repo, pull_number: pr[:pull_number],
                                labels: config[:pr_labels])
 
+            k = review_k || default_review_k
+            review_result = run_adversarial_review(owner: owner, repo: repo,
+                                                   pull_number: pr[:pull_number], k: k)
+
             handle_auto_merge(owner: owner, repo: repo, pull_number: pr[:pull_number],
-                              config: config, review: review)
+                              config: config, review: review, review_result: review_result)
 
             { success: true, pull_number: pr[:pull_number], html_url: pr[:html_url],
-              branch: branch_name, generation_id: generation[:generation_id] }
+              branch: branch_name, generation_id: generation[:generation_id],
+              review_consensus: review_result&.dig(:consensus), review_k: k }
           rescue StandardError => e
             log.warn("ExtensionLifecycle failed: #{e.message}")
             { success: false, error: e.message }
@@ -84,8 +89,45 @@ module Legion
             { success: false, error: e.message }
           end
 
-          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:)
+          def default_review_k
+            return 1 unless defined?(Legion::Settings)
+
+            Legion::Settings.dig(:codegen, :self_generate, :github, :review_k) || 1
+          rescue StandardError => e
+            log.warn(e.message)
+            1
+          end
+
+          def run_adversarial_review(owner:, repo:, pull_number:, k:) # rubocop:disable Naming/MethodParameterName
+            return { success: true, skipped: true, reason: :reviewer_unavailable } unless pr_reviewer_available?
+
+            reviews = Array.new(k) do
+              Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer.review_pull_request(
+                owner: owner, repo: repo, pull_number: pull_number
+              )
+            end
+
+            approvals = reviews.count do |r|
+              r[:status] == 'reviewed' && (r[:comments] || []).none? { |c| %w[error critical].include?(c[:severity]&.to_s) }
+            end
+            rejections = k - approvals
+
+            {
+              success:    true,
+              consensus:  approvals > rejections ? :approve : :request_changes,
+              k:          k,
+              approvals:  approvals,
+              rejections: rejections,
+              reviews:    reviews
+            }
+          rescue StandardError => e
+            log.warn("adversarial PR review failed: #{e.message}")
+            { success: true, skipped: true, reason: :review_error }
+          end
+
+          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:, review_result: nil) # rubocop:disable Metrics/ParameterLists
             return unless config[:auto_merge] && review[:verdict]&.to_sym == :approve
+            return if review_result && review_result[:consensus] == :request_changes
 
             github_client.merge_pull_request(
               owner: owner, repo: repo, pull_number: pull_number,
@@ -148,6 +190,10 @@ module Legion
 
           def github_runner_available?
             defined?(Legion::Extensions::Github::Client)
+          end
+
+          def pr_reviewer_available?
+            defined?(Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer)
           end
 
           def github_client

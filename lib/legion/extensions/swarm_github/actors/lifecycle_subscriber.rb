@@ -21,8 +21,9 @@ module Legion
 
             generation = payload[:generation] || {}
             review = payload.except(:generation)
+            review_k = payload[:review_k]
 
-            Runners::ExtensionLifecycle.run_lifecycle(generation: generation, review: review)
+            Runners::ExtensionLifecycle.run_lifecycle(generation: generation, review: review, review_k: review_k)
           rescue StandardError => e
             log.warn("LifecycleSubscriber failed: #{e.message}")
             { success: false, error: e.message }

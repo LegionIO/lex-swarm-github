@@ -5,6 +5,7 @@
 ### Added
 - `Runners::ExtensionLifecycle` — orchestrates autonomous extension github pipeline: branch creation, file commit, PR open, label, optional auto-merge
 - `Actor::LifecycleSubscriber` — subscription actor that triggers lifecycle runner when generation review verdict is `approve` and github lifecycle is enabled
+- Added K-factor adversarial PR review (review_k: kwarg, default 1, settings-configurable)
 
 ## [0.3.0] - 2026-03-24
 

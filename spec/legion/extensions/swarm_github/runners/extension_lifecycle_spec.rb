@@ -175,5 +175,38 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         expect(result[:error]).to eq('unexpected failure')
       end
     end
+
+    describe 'adversarial PR review' do
+      let(:mod) { described_class }
+
+      before do
+        allow(mod).to receive(:github_config).and_return(
+          enabled: true, target_repo: 'Test/repo', target_branch: 'main',
+          auto_merge: false, pr_labels: [], branch_prefix: 'feature/auto-gen'
+        )
+        allow(mod).to receive(:create_lifecycle_branch).and_return({ success: true })
+        allow(mod).to receive(:commit_generated_files).and_return({ success: true })
+        allow(mod).to receive(:open_pull_request).and_return({ success: true, pull_number: 1, html_url: 'url' })
+        allow(mod).to receive(:label_pull_request).and_return({ success: true })
+        allow(mod).to receive(:run_adversarial_review).and_return({ success: true, consensus: :approve, k: 3 })
+        allow(mod).to receive(:handle_auto_merge)
+      end
+
+      it 'passes review_k through to adversarial review' do
+        mod.run_lifecycle(generation: generation, review: review, review_k: 3)
+        expect(mod).to have_received(:run_adversarial_review).with(hash_including(k: 3))
+      end
+
+      it 'defaults review_k to 1' do
+        mod.run_lifecycle(generation: generation, review: review)
+        expect(mod).to have_received(:run_adversarial_review).with(hash_including(k: 1))
+      end
+
+      it 'includes review consensus in result' do
+        result = mod.run_lifecycle(generation: generation, review: review, review_k: 3)
+        expect(result[:review_consensus]).to eq(:approve)
+        expect(result[:review_k]).to eq(3)
+      end
+    end
   end
 end
