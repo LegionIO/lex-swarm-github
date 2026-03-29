@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1] - 2026-03-28
+
+### Added
+- `Runners::ExtensionLifecycle` — orchestrates autonomous extension github pipeline: branch creation, file commit, PR open, label, optional auto-merge
+- `Actor::LifecycleSubscriber` — subscription actor that triggers lifecycle runner when generation review verdict is `approve` and github lifecycle is enabled
+
 ## [0.3.0] - 2026-03-24
 
 ### Changed
