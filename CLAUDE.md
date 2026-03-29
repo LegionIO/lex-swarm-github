@@ -11,7 +11,7 @@ GitHub-specific swarm pipeline for the LegionIO cognitive architecture. Implemen
 ## Gem Info
 
 - **Gem name**: `lex-swarm-github`
-- **Version**: `0.2.0`
+- **Version**: `0.3.0`
 - **Module**: `Legion::Extensions::SwarmGithub`
 - **Ruby**: `>= 3.4`
 - **License**: MIT
