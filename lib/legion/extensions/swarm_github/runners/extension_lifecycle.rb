@@ -70,6 +70,7 @@ module Legion
             pr = result[:result] || {}
             { success: true, pull_number: pr['number'], html_url: pr['html_url'] }
           rescue StandardError => e
+            log.warn(e.message)
             { success: false, error: e.message }
           end
 

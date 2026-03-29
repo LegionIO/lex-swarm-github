@@ -43,7 +43,7 @@ module Legion
             end
             merge_chunk_reviews(reviews)
           rescue StandardError => e
-            Legion::Logging::Logger.warn "Review generation failed: #{e.message}"
+            log.warn("Review generation failed: #{e.message}") if respond_to?(:log, true)
             { summary: 'Review generation failed', comments: [] }
           end
 
@@ -57,7 +57,7 @@ module Legion
           end
 
           def parse_review_response(response)
-            Legion::JSON.load(response)
+            Legion::JSON.parse(response)
           rescue StandardError => e
             log.warn(e.message) if respond_to?(:log, true)
             { summary: response.to_s, comments: [] }
