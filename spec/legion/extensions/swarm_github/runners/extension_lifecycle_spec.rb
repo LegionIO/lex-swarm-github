@@ -208,5 +208,82 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         expect(result[:review_k]).to eq(3)
       end
     end
+
+    describe 'multi-provider adversarial review' do
+      let(:mod) { described_class }
+
+      before do
+        allow(mod).to receive(:github_config).and_return(
+          enabled: true, target_repo: 'Test/repo', target_branch: 'main',
+          auto_merge: false, pr_labels: [], branch_prefix: 'feature/auto-gen'
+        )
+        allow(mod).to receive(:create_lifecycle_branch).and_return({ success: true })
+        allow(mod).to receive(:commit_generated_files).and_return({ success: true })
+        allow(mod).to receive(:open_pull_request).and_return({ success: true, pull_number: 1, html_url: 'url' })
+        allow(mod).to receive(:label_pull_request).and_return({ success: true })
+        allow(mod).to receive(:handle_auto_merge)
+      end
+
+      it 'forwards review_models to adversarial review' do
+        allow(mod).to receive(:run_adversarial_review).and_return({ success: true, consensus: :approve, k: 2 })
+        models = [{ provider: :bedrock, model: 'claude' }]
+        mod.run_lifecycle(generation: generation, review: review, review_k: 2, review_models: models)
+        expect(mod).to have_received(:run_adversarial_review).with(hash_including(models: models))
+      end
+
+      it 'uses default_review_models when review_models is nil' do
+        allow(mod).to receive(:run_adversarial_review).and_return({ success: true, consensus: :approve, k: 1 })
+        allow(mod).to receive(:default_review_models).and_return([])
+        mod.run_lifecycle(generation: generation, review: review)
+        expect(mod).to have_received(:default_review_models)
+      end
+    end
+
+    describe '#build_model_assignments' do
+      let(:mod) { described_class }
+
+      it 'returns all nils when models is nil' do
+        result = mod.send(:build_model_assignments, 3, nil)
+        expect(result).to eq([nil, nil, nil])
+      end
+
+      it 'returns all nils when models is empty' do
+        result = mod.send(:build_model_assignments, 2, [])
+        expect(result).to eq([nil, nil])
+      end
+
+      it 'cycles available models across K slots' do
+        allow(mod).to receive(:provider_available?).and_return(true)
+        models = [{ provider: :bedrock, model: 'a' }, { provider: :openai, model: 'b' }]
+        result = mod.send(:build_model_assignments, 3, models)
+        expect(result).to eq([{ provider: :bedrock, model: 'a' }, { provider: :openai, model: 'b' },
+                              { provider: :bedrock, model: 'a' }])
+      end
+
+      it 'skips unavailable providers and falls back to nil assignments' do
+        allow(mod).to receive(:provider_available?).and_return(false)
+        models = [{ provider: :unavailable, model: 'x' }]
+        result = mod.send(:build_model_assignments, 2, models)
+        expect(result).to eq([nil, nil])
+      end
+    end
+
+    describe '#provider_available?' do
+      let(:mod) { described_class }
+
+      it 'returns false when Legion::Settings is not defined' do
+        hide_const('Legion::Settings') if defined?(Legion::Settings)
+        expect(mod.send(:provider_available?, :bedrock)).to be false
+      end
+    end
+
+    describe '#default_review_models' do
+      let(:mod) { described_class }
+
+      it 'returns empty array when Legion::Settings is not defined' do
+        hide_const('Legion::Settings') if defined?(Legion::Settings)
+        expect(mod.send(:default_review_models)).to eq([])
+      end
+    end
   end
 end

@@ -7,7 +7,7 @@ module Legion
         module ExtensionLifecycle
           extend self
 
-          def run_lifecycle(generation:, review:, review_k: nil)
+          def run_lifecycle(generation:, review:, review_k: nil, review_models: nil)
             config = github_config
             return { success: false, error: :github_not_enabled } unless config[:enabled]
             return { success: false, error: :target_repo_missing } unless config[:target_repo]
@@ -32,8 +32,9 @@ module Legion
                                labels: config[:pr_labels])
 
             k = review_k || default_review_k
+            models = review_models || default_review_models
             review_result = run_adversarial_review(owner: owner, repo: repo,
-                                                   pull_number: pr[:pull_number], k: k)
+                                                   pull_number: pr[:pull_number], k: k, models: models)
 
             handle_auto_merge(owner: owner, repo: repo, pull_number: pr[:pull_number],
                               config: config, review: review, review_result: review_result)
@@ -98,13 +99,54 @@ module Legion
             1
           end
 
-          def run_adversarial_review(owner:, repo:, pull_number:, k:) # rubocop:disable Naming/MethodParameterName
+          def default_review_models
+            return [] unless defined?(Legion::Settings)
+
+            Legion::Settings.dig(:codegen, :self_generate, :github, :review_models) || []
+          rescue StandardError => e
+            log.warn(e.message)
+            []
+          end
+
+          def provider_available?(provider_sym)
+            return false unless defined?(Legion::Settings)
+
+            Legion::Settings.dig(:llm, :providers, provider_sym, :enabled) == true
+          rescue StandardError => e
+            log.warn(e.message)
+            false
+          end
+
+          def build_model_assignments(count, models)
+            return Array.new(count) { nil } if models.nil? || models.empty?
+
+            available = models.select do |spec|
+              provider_sym = spec[:provider]&.to_sym
+              if provider_sym && !provider_available?(provider_sym)
+                log.warn("review provider #{provider_sym} not available, skipping")
+                false
+              else
+                true
+              end
+            end
+
+            return Array.new(count) { nil } if available.empty?
+
+            Array.new(count) { |i| available[i % available.size] }
+          end
+
+          def run_adversarial_review(owner:, repo:, pull_number:, k:, models: []) # rubocop:disable Naming/MethodParameterName
             return { success: true, skipped: true, reason: :reviewer_unavailable } unless pr_reviewer_available?
 
-            reviews = Array.new(k) do
-              Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer.review_pull_request(
-                owner: owner, repo: repo, pull_number: pull_number
-              )
+            assignments = build_model_assignments(k, models)
+
+            reviews = assignments.map do |spec|
+              kwargs = { owner: owner, repo: repo, pull_number: pull_number }
+              if spec
+                kwargs[:model] = spec[:model] if spec[:model]
+                kwargs[:provider] = spec[:provider] if spec[:provider]
+              end
+              Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer.review_pull_request(**kwargs)
             end
 
             approvals = reviews.count do |r|
