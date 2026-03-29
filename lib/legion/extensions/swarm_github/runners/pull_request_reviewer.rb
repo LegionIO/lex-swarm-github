@@ -28,7 +28,8 @@ module Legion
             Legion::Extensions::Github::Client.new.list_pull_request_files(
               owner: owner, repo: repo, pull_number: pull_number
             )[:result] || []
-          rescue StandardError
+          rescue StandardError => e
+            log.warn(e.message) if respond_to?(:log, true)
             []
           end
 
@@ -57,7 +58,8 @@ module Legion
 
           def parse_review_response(response)
             Legion::JSON.load(response)
-          rescue StandardError
+          rescue StandardError => e
+            log.warn(e.message) if respond_to?(:log, true)
             { summary: response.to_s, comments: [] }
           end
 

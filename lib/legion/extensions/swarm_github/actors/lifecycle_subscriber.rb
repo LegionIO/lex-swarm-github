@@ -34,7 +34,8 @@ module Legion
             return false unless defined?(Legion::Settings)
 
             Legion::Settings.dig(:codegen, :self_generate, :github, :enabled) == true
-          rescue StandardError
+          rescue StandardError => e
+            log.warn(e.message)
             false
           end
 

@@ -132,7 +132,8 @@ module Legion
 
             settings = Legion::Settings.dig(:codegen, :self_generate, :github) || {}
             default_config.merge(settings)
-          rescue StandardError
+          rescue StandardError => e
+            log.warn(e.message)
             default_config
           end
 
@@ -156,7 +157,8 @@ module Legion
             return {} unless defined?(Legion::Settings)
 
             { token: Legion::Settings.dig(:github, :token) }
-          rescue StandardError
+          rescue StandardError => e
+            log.warn(e.message)
             {}
           end
 
