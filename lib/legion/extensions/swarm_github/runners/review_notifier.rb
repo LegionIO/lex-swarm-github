@@ -17,7 +17,7 @@ module Legion
 
             { notified: result[:ok] == true, channel: channel, ts: result[:ts] }
           rescue StandardError => e
-            log.warn(e.message) if respond_to?(:log, true)
+            log.warn(e.message) if respond_to?(:log, true) # rubocop:disable Legion/HelperMigration/LoggingGuard
             { notified: false, reason: "slack error: #{e.message}" }
           end
 

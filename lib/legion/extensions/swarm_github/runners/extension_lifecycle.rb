@@ -66,7 +66,7 @@ module Legion
             github_client.commit_files(owner: owner, repo: repo, branch: branch, files: files, message: message)
           end
 
-          def open_pull_request(owner:, repo:, branch:, base:, generation:, review:) # rubocop:disable Metrics/ParameterLists
+          def open_pull_request(owner:, repo:, branch:, base:, generation:, review:)
             return { success: false, error: :github_runner_unavailable } unless github_runner_available?
 
             body = build_pr_body(generation: generation, review: review)
@@ -174,8 +174,9 @@ module Legion
               Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer.review_pull_request(**kwargs)
             end
 
+            blocker_severities = %w[error critical].freeze
             approvals = reviews.count do |r|
-              r[:status] == 'reviewed' && (r[:comments] || []).none? { |c| %w[error critical].include?(c[:severity]&.to_s) }
+              r[:status] == 'reviewed' && (r[:comments] || []).none? { |c| blocker_severities.include?(c[:severity]&.to_s) }
             end
             rejections = k - approvals
 
@@ -192,7 +193,7 @@ module Legion
             { success: true, skipped: true, reason: :review_error }
           end
 
-          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:, review_result: nil) # rubocop:disable Metrics/ParameterLists
+          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:, review_result: nil)
             return unless config[:auto_merge] && review[:verdict]&.to_sym == :approve
             return if review_result && review_result[:consensus] == :request_changes
 
@@ -277,11 +278,7 @@ module Legion
           end
 
           def log
-            return Legion::Logging if defined?(Legion::Logging)
-
-            @log ||= Object.new.tap do |nl|
-              %i[debug info warn error fatal].each { |m| nl.define_singleton_method(m) { |*| nil } }
-            end
+            Legion::Logging
           end
 
           def build_generation(payload)

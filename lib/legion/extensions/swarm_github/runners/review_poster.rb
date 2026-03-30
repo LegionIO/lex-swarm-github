@@ -22,7 +22,7 @@ module Legion
             review_id = result.dig(:result, 'id') || result.dig(:result, :id)
             { posted: true, review_id: review_id, comments_count: inline_comments.size }
           rescue StandardError => e
-            log.warn(e.message) if respond_to?(:log, true)
+            log.warn(e.message) if respond_to?(:log, true) # rubocop:disable Legion/HelperMigration/LoggingGuard
             { posted: false, reason: "post failed: #{e.message}" }
           end
 

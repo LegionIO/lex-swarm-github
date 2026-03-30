@@ -31,7 +31,7 @@ module Legion
               owner: owner, repo: repo, pull_number: pull_number
             )[:result] || []
           rescue StandardError => e
-            log.warn(e.message) if respond_to?(:log, true)
+            log.warn(e.message) if respond_to?(:log, true) # rubocop:disable Legion/HelperMigration/LoggingGuard
             []
           end
 
@@ -43,18 +43,18 @@ module Legion
               llm_kwargs = { message: prompt, caller: { extension: 'lex-swarm-github' } }
               llm_kwargs[:model] = model if model
               llm_kwargs[:provider] = provider if provider
-              response = Legion::LLM.chat(**llm_kwargs)
+              response = Legion::LLM.chat(**llm_kwargs) # rubocop:disable Legion/HelperMigration/DirectLlm
               parse_review_response(response)
             end
             merge_chunk_reviews(reviews)
           rescue StandardError => e
-            log.warn("Review generation failed: #{e.message}") if respond_to?(:log, true)
+            log.warn("Review generation failed: #{e.message}") if respond_to?(:log, true) # rubocop:disable Legion/HelperMigration/LoggingGuard
             { summary: 'Review generation failed', comments: [] }
           end
 
           def merge_chunk_reviews(reviews)
             merged_comments = reviews.flat_map { |r| r[:comments] || [] }
-            summaries = reviews.map { |r| r[:summary] }.compact
+            summaries = reviews.filter_map { |r| r[:summary] }
             {
               summary:  summaries.join("\n\n"),
               comments: merged_comments
@@ -62,9 +62,9 @@ module Legion
           end
 
           def parse_review_response(response)
-            Legion::JSON.parse(response)
+            json_parse(response)
           rescue StandardError => e
-            log.warn(e.message) if respond_to?(:log, true)
+            log.warn(e.message) if respond_to?(:log, true) # rubocop:disable Legion/HelperMigration/LoggingGuard
             { summary: response.to_s, comments: [] }
           end
 

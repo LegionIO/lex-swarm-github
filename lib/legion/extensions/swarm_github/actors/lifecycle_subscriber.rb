@@ -54,11 +54,7 @@ module Legion
           end
 
           def log
-            return Legion::Logging if defined?(Legion::Logging)
-
-            @log ||= Object.new.tap do |nl|
-              %i[debug info warn error fatal].each { |m| nl.define_singleton_method(m) { |*| nil } }
-            end
+            Legion::Logging
           end
         end
       end
