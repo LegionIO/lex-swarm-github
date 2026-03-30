@@ -268,9 +268,21 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         expect(result).to eq([nil, nil])
       end
 
-      it 'returns all nils and warns when models is not an Array' do
+      it 'returns all nils and warns when models is a String' do
         expect(mod).to receive(:log).at_least(:once).and_return(double(warn: nil))
         result = mod.send(:build_model_assignments, 2, 'not-an-array')
+        expect(result).to eq([nil, nil])
+      end
+
+      it 'returns all nils and warns when models is a Hash' do
+        expect(mod).to receive(:log).at_least(:once).and_return(double(warn: nil))
+        result = mod.send(:build_model_assignments, 2, { provider: :bedrock, model: 'claude' })
+        expect(result).to eq([nil, nil])
+      end
+
+      it 'returns all nils and warns when models is an Integer' do
+        expect(mod).to receive(:log).at_least(:once).and_return(double(warn: nil))
+        result = mod.send(:build_model_assignments, 2, 42)
         expect(result).to eq([nil, nil])
       end
     end

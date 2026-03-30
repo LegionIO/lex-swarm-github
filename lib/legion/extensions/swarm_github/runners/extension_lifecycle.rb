@@ -118,12 +118,14 @@ module Legion
           end
 
           def build_model_assignments(count, models)
-            return Array.new(count) { nil } if models.nil? || models.empty?
+            return Array.new(count) { nil } if models.nil?
 
             unless models.is_a?(Array)
               log.warn("review_models must be an Array, got #{models.class}; using defaults")
               return Array.new(count) { nil }
             end
+
+            return Array.new(count) { nil } if models.empty?
 
             available = models.filter_map do |raw_spec|
               unless raw_spec.is_a?(Hash)
