@@ -98,5 +98,32 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer do
         expect(result[:comments].first[:severity]).to eq('error')
       end
     end
+
+    context 'with model: and provider: kwargs' do
+      let(:client) { Class.new { include Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer }.new }
+
+      before do
+        stub_const('Legion::LLM', Module.new)
+        allow(Legion::LLM).to receive(:chat).and_return('{"summary":"ok","comments":[]}')
+        allow(client).to receive(:fetch_pr_files).and_return(
+          [{ filename: 'test.rb', patch: '+x' }]
+        )
+      end
+
+      it 'forwards model and provider to Legion::LLM.chat' do
+        client.review_pull_request(owner: 'o', repo: 'r', pull_number: 1, model: 'gpt-4o', provider: :openai)
+        expect(Legion::LLM).to have_received(:chat).with(hash_including(model: 'gpt-4o', provider: :openai))
+      end
+
+      it 'omits model key when model is nil' do
+        client.review_pull_request(owner: 'o', repo: 'r', pull_number: 1)
+        expect(Legion::LLM).to have_received(:chat).with(hash_not_including(:model))
+      end
+
+      it 'omits provider key when provider is nil' do
+        client.review_pull_request(owner: 'o', repo: 'r', pull_number: 1)
+        expect(Legion::LLM).to have_received(:chat).with(hash_not_including(:provider))
+      end
+    end
   end
 end

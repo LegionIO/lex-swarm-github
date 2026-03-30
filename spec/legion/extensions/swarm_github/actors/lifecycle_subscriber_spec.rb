@@ -80,10 +80,19 @@ RSpec.describe Legion::Extensions::SwarmGithub::Actor::LifecycleSubscriber do
         actor.action(payload)
         expect(Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle)
           .to have_received(:run_lifecycle).with(
-            generation: generation,
-            review:     hash_including(verdict: 'approve'),
-            review_k:   nil
+            generation:    generation,
+            review:        hash_including(verdict: 'approve'),
+            review_k:      nil,
+            review_models: nil
           )
+      end
+
+      it 'forwards review_models from payload' do
+        models = [{ provider: :bedrock, model: 'claude' }]
+        payload = { verdict: 'approve', generation: generation, review_models: models }
+        actor.action(payload)
+        expect(Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle)
+          .to have_received(:run_lifecycle).with(hash_including(review_models: models))
       end
 
       it 'returns the lifecycle result' do

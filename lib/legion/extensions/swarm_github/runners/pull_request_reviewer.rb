@@ -5,11 +5,13 @@ module Legion
     module SwarmGithub
       module Runners
         module PullRequestReviewer
-          def review_pull_request(owner:, repo:, pull_number:)
+          extend self
+
+          def review_pull_request(owner:, repo:, pull_number:, model: nil, provider: nil)
             files = fetch_pr_files(owner: owner, repo: repo, pull_number: pull_number)
             return { status: 'skipped', reason: 'no files' } if files.empty?
 
-            review = generate_review(files)
+            review = generate_review(files, model: model, provider: provider)
 
             {
               status:         'reviewed',
@@ -33,12 +35,15 @@ module Legion
             []
           end
 
-          def generate_review(files)
+          def generate_review(files, model: nil, provider: nil)
             chunks = Helpers::DiffChunker.chunk_files(files)
             reviews = chunks.map do |chunk|
               diff_text = chunk.map { |f| "--- #{f[:filename]} ---\n#{f[:patch]}" }.join("\n\n")
               prompt = code_review_prompt(diff_text)
-              response = Legion::LLM.chat(message: prompt, caller: { extension: 'lex-swarm-github' })
+              llm_kwargs = { message: prompt, caller: { extension: 'lex-swarm-github' } }
+              llm_kwargs[:model] = model if model
+              llm_kwargs[:provider] = provider if provider
+              response = Legion::LLM.chat(**llm_kwargs)
               parse_review_response(response)
             end
             merge_chunk_reviews(reviews)
