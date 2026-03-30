@@ -7,7 +7,9 @@ module Legion
         module ExtensionLifecycle
           extend self
 
-          def run_lifecycle(generation:, review:, review_k: nil, review_models: nil)
+          def run_lifecycle(generation: nil, review: nil, review_k: nil, review_models: nil, **payload)
+            generation ||= build_generation(payload)
+            review ||= build_review(payload)
             config = github_config
             return { success: false, error: :github_not_enabled } unless config[:enabled]
             return { success: false, error: :target_repo_missing } unless config[:target_repo]
@@ -64,7 +66,7 @@ module Legion
             github_client.commit_files(owner: owner, repo: repo, branch: branch, files: files, message: message)
           end
 
-          def open_pull_request(owner:, repo:, branch:, base:, generation:, review:) # rubocop:disable Metrics/ParameterLists
+          def open_pull_request(owner:, repo:, branch:, base:, generation:, review:)
             return { success: false, error: :github_runner_unavailable } unless github_runner_available?
 
             body = build_pr_body(generation: generation, review: review)
@@ -84,7 +86,7 @@ module Legion
             return { success: true } unless pull_number && labels&.any?
             return { success: false, error: :github_runner_unavailable } unless github_runner_available?
 
-            github_client.add_labels(owner: owner, repo: repo, issue_number: pull_number, labels: labels)
+            github_client.add_labels_to_issue(owner: owner, repo: repo, issue_number: pull_number, labels: labels)
           rescue StandardError => e
             log.warn("Label failed: #{e.message}")
             { success: false, error: e.message }
@@ -172,8 +174,9 @@ module Legion
               Legion::Extensions::SwarmGithub::Runners::PullRequestReviewer.review_pull_request(**kwargs)
             end
 
+            blocker_severities = %w[error critical].freeze
             approvals = reviews.count do |r|
-              r[:status] == 'reviewed' && (r[:comments] || []).none? { |c| %w[error critical].include?(c[:severity]&.to_s) }
+              r[:status] == 'reviewed' && (r[:comments] || []).none? { |c| blocker_severities.include?(c[:severity]&.to_s) }
             end
             rejections = k - approvals
 
@@ -190,7 +193,7 @@ module Legion
             { success: true, skipped: true, reason: :review_error }
           end
 
-          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:, review_result: nil) # rubocop:disable Metrics/ParameterLists
+          def handle_auto_merge(owner:, repo:, pull_number:, config:, review:, review_result: nil)
             return unless config[:auto_merge] && review[:verdict]&.to_sym == :approve
             return if review_result && review_result[:consensus] == :request_changes
 
@@ -275,11 +278,31 @@ module Legion
           end
 
           def log
-            return Legion::Logging if defined?(Legion::Logging)
+            Legion::Logging
+          end
 
-            @log ||= Object.new.tap do |nl|
-              %i[debug info warn error fatal].each { |m| nl.define_singleton_method(m) { |*| nil } }
-            end
+          def build_generation(payload)
+            {
+              name:          payload[:name],
+              generation_id: payload[:generation_id],
+              gap_id:        payload[:gap_id],
+              gap_type:      payload[:gap_type],
+              tier:          payload[:tier],
+              code:          payload[:code],
+              spec_code:     payload[:spec_code],
+              file_path:     payload[:file_path],
+              spec_path:     payload[:spec_path]
+            }.compact
+          end
+
+          def build_review(payload)
+            {
+              verdict:    payload[:verdict],
+              confidence: payload[:confidence],
+              stages:     payload[:stages],
+              issues:     payload[:issues],
+              passed:     payload[:passed]
+            }.compact
           end
         end
       end

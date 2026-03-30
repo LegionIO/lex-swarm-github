@@ -9,7 +9,7 @@ module Legion
         class LifecycleSubscriber < Legion::Extensions::Actors::Subscription
           def runner_class    = self.class
           def runner_function = 'action'
-          def check_subtask?  = false
+          def check_subtask?  = true
           def generate_task?  = false
 
           def action(payload)
@@ -54,11 +54,7 @@ module Legion
           end
 
           def log
-            return Legion::Logging if defined?(Legion::Logging)
-
-            @log ||= Object.new.tap do |nl|
-              %i[debug info warn error fatal].each { |m| nl.define_singleton_method(m) { |*| nil } }
-            end
+            Legion::Logging
           end
         end
       end

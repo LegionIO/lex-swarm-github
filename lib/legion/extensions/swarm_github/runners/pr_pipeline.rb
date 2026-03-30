@@ -43,7 +43,8 @@ module Legion
             return unless issue_number
 
             review_comments = review_result.dig(:review, :comments) || []
-            approved = review_comments.none? { |c| %w[critical high].include?(c[:severity]&.to_s&.downcase) }
+            blocker_severities = %w[critical high].freeze
+            approved = review_comments.none? { |c| blocker_severities.include?(c[:severity]&.to_s&.downcase) }
             @issue_tracker&.record_validation(
               "#{repo}##{issue_number}",
               validator: :code_review,

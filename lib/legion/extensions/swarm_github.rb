@@ -11,12 +11,12 @@ require 'legion/extensions/swarm_github/runners/review_poster'
 require 'legion/extensions/swarm_github/runners/review_notifier'
 require 'legion/extensions/swarm_github/runners/pr_pipeline'
 require 'legion/extensions/swarm_github/runners/extension_lifecycle'
-require 'legion/extensions/swarm_github/actors/lifecycle_subscriber' if defined?(Legion::Extensions::Actors::Subscription)
+require 'legion/extensions/swarm_github/actors/lifecycle_subscriber' if defined?(Legion::Extensions::Actors::Subscription) # rubocop:disable Legion/HelperMigration/RequireDefinedGuard
 
 module Legion
   module Extensions
     module SwarmGithub
-      extend Legion::Extensions::Core if Legion::Extensions.const_defined? :Core
+      extend Legion::Extensions::Core if Legion::Extensions.const_defined? :Core, false
     end
   end
 end

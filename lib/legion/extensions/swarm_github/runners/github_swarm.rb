@@ -5,8 +5,8 @@ module Legion
     module SwarmGithub
       module Runners
         module GithubSwarm
-          include Legion::Extensions::Helpers::Lex if Legion::Extensions.const_defined?(:Helpers) &&
-                                                      Legion::Extensions::Helpers.const_defined?(:Lex)
+          include Legion::Extensions::Helpers::Lex if Legion::Extensions.const_defined?(:Helpers, false) &&
+                                                      Legion::Extensions::Helpers.const_defined?(:Lex, false)
 
           def ingest_issue(repo:, issue_number:, title:, labels: [], **)
             key = issue_tracker.track(repo: repo, issue_number: issue_number, title: title, labels: labels)
