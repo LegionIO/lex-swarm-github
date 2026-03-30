@@ -79,6 +79,7 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
           { result: { 'number' => 42, 'html_url' => 'https://github.com/org/repo/pull/42' } }
         )
         allow(github_client).to receive(:add_labels).and_return({ success: true })
+        allow(runner).to receive(:pr_reviewer_available?).and_return(false)
       end
 
       it 'returns success with PR details' do
@@ -154,6 +155,7 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
           { result: { 'number' => 7, 'html_url' => 'https://github.com/org/repo/pull/7' } }
         )
         allow(github_client).to receive(:merge_pull_request).and_return({ success: true })
+        allow(runner).to receive(:pr_reviewer_available?).and_return(false)
       end
 
       it 'calls merge_pull_request' do
@@ -263,6 +265,12 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         allow(mod).to receive(:provider_available?).and_return(false)
         models = [{ provider: :unavailable, model: 'x' }]
         result = mod.send(:build_model_assignments, 2, models)
+        expect(result).to eq([nil, nil])
+      end
+
+      it 'returns all nils and warns when models is not an Array' do
+        expect(mod).to receive(:log).at_least(:once).and_return(double(warn: nil))
+        result = mod.send(:build_model_assignments, 2, 'not-an-array')
         expect(result).to eq([nil, nil])
       end
     end

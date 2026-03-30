@@ -5,6 +5,8 @@ module Legion
     module SwarmGithub
       module Runners
         module PullRequestReviewer
+          extend self
+
           def review_pull_request(owner:, repo:, pull_number:, model: nil, provider: nil)
             files = fetch_pr_files(owner: owner, repo: repo, pull_number: pull_number)
             return { status: 'skipped', reason: 'no files' } if files.empty?
