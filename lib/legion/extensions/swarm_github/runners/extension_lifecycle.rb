@@ -140,7 +140,8 @@ module Legion
 
             return Array.new(count) { nil } if available.empty?
 
-            Array.new(count) { |i| available[i % available.size] }
+            assignments = available.first(count)
+            assignments + Array.new([count - assignments.length, 0].max) { nil }
           end
 
           def run_adversarial_review(owner:, repo:, pull_number:, k:, models: []) # rubocop:disable Naming/MethodParameterName

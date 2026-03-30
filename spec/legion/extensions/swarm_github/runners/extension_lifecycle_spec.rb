@@ -252,12 +252,11 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         expect(result).to eq([nil, nil])
       end
 
-      it 'cycles available models across K slots' do
+      it 'uses each available model at most once, then fills remaining slots with nil' do
         allow(mod).to receive(:provider_available?).and_return(true)
         models = [{ provider: :bedrock, model: 'a' }, { provider: :openai, model: 'b' }]
         result = mod.send(:build_model_assignments, 3, models)
-        expect(result).to eq([{ provider: :bedrock, model: 'a' }, { provider: :openai, model: 'b' },
-                              { provider: :bedrock, model: 'a' }])
+        expect(result).to eq([{ provider: :bedrock, model: 'a' }, { provider: :openai, model: 'b' }, nil])
       end
 
       it 'skips unavailable providers and falls back to nil assignments' do
