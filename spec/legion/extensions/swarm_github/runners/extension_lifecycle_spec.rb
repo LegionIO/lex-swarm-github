@@ -285,6 +285,16 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         result = mod.send(:build_model_assignments, 2, 42)
         expect(result).to eq([nil, nil])
       end
+
+      it 'skips specs with a non-symbolizable provider value and warns' do
+        logger = double(warn: nil)
+        allow(mod).to receive(:log).and_return(logger)
+        models = [{ provider: [1, 2], model: 'x' }, { provider: :openai, model: 'y' }]
+        allow(mod).to receive(:provider_available?).with(:openai).and_return(true)
+        result = mod.send(:build_model_assignments, 2, models)
+        expect(logger).to have_received(:warn).with(/cannot be symbolized/)
+        expect(result).to eq([{ provider: :openai, model: 'y' }, nil])
+      end
     end
 
     describe '#provider_available?' do

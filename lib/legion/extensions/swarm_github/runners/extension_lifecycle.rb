@@ -134,7 +134,14 @@ module Legion
               end
 
               spec = raw_spec.transform_keys { |k| k.respond_to?(:to_sym) ? k.to_sym : k }
-              provider_sym = spec[:provider]&.to_sym
+              provider_value = spec[:provider]
+
+              if provider_value && !provider_value.respond_to?(:to_sym)
+                log.warn("review provider value #{provider_value.inspect} (#{provider_value.class}) cannot be symbolized, skipping")
+                next
+              end
+
+              provider_sym = provider_value&.to_sym
               spec[:provider] = provider_sym if provider_sym
 
               if provider_sym && !provider_available?(provider_sym)
