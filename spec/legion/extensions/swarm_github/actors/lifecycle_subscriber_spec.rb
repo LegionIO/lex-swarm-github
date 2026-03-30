@@ -22,7 +22,7 @@ RSpec.describe Legion::Extensions::SwarmGithub::Actor::LifecycleSubscriber do
   end
 
   describe '#check_subtask?' do
-    it { expect(actor.check_subtask?).to be false }
+    it { expect(actor.check_subtask?).to be true }
   end
 
   describe '#generate_task?' do

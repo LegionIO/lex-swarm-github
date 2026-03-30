@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.3] - 2026-03-29
+
+### Fixed
+- `label_pull_request` now calls `add_labels_to_issue` (correct Octokit method name)
+
+### Changed
+- `run_lifecycle` accepts flat task payloads via `**payload` splat; `generation` and `review` are built from flat keys when not provided explicitly
+- `LifecycleSubscriber` sets `check_subtask?` to `true` for task system conformance
+
 ## [0.3.2] - 2026-03-29
 
 ### Added

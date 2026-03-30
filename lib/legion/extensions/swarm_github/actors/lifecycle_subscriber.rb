@@ -9,7 +9,7 @@ module Legion
         class LifecycleSubscriber < Legion::Extensions::Actors::Subscription
           def runner_class    = self.class
           def runner_function = 'action'
-          def check_subtask?  = false
+          def check_subtask?  = true
           def generate_task?  = false
 
           def action(payload)

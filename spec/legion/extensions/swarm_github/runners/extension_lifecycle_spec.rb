@@ -78,7 +78,7 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         allow(github_client).to receive(:create_pull_request).and_return(
           { result: { 'number' => 42, 'html_url' => 'https://github.com/org/repo/pull/42' } }
         )
-        allow(github_client).to receive(:add_labels).and_return({ success: true })
+        allow(github_client).to receive(:add_labels_to_issue).and_return({ success: true })
         allow(runner).to receive(:pr_reviewer_available?).and_return(false)
       end
 
@@ -109,11 +109,43 @@ RSpec.describe Legion::Extensions::SwarmGithub::Runners::ExtensionLifecycle do
         )
       end
 
-      it 'calls add_labels' do
+      it 'calls add_labels_to_issue' do
         runner.run_lifecycle(generation: generation, review: review)
-        expect(github_client).to have_received(:add_labels).with(
+        expect(github_client).to have_received(:add_labels_to_issue).with(
           hash_including(labels: %w[auto-generated needs-review])
         )
+      end
+    end
+
+    context 'when called with a flat payload (no generation/review keys)' do
+      let(:github_client) { double('Github::Client') }
+
+      before do
+        runner.instance_variable_set(:@github_client, nil)
+        allow(runner).to receive(:github_config).and_return(
+          { enabled: true, target_repo: 'org/repo', target_branch: 'main',
+            auto_merge: false, pr_labels: [], branch_prefix: 'feature/auto-generated' }
+        )
+        stub_const('Legion::Extensions::Github::Client', Class.new)
+        allow(Legion::Extensions::Github::Client).to receive(:new).and_return(github_client)
+        allow(github_client).to receive(:create_branch).and_return({ success: true })
+        allow(github_client).to receive(:commit_files).and_return({ success: true })
+        allow(github_client).to receive(:create_pull_request).and_return(
+          { result: { 'number' => 99, 'html_url' => 'https://github.com/org/repo/pull/99' } }
+        )
+        allow(runner).to receive(:pr_reviewer_available?).and_return(false)
+      end
+
+      it 'builds generation and review from flat keys and returns success' do
+        result = runner.run_lifecycle(
+          name: 'lex-bar', generation_id: 'gen-flat', gap_id: 'gap-002',
+          gap_type: 'missing_runner', tier: 'utility',
+          code: '# code', spec_code: '# spec', file_path: 'lib/foo.rb', spec_path: 'spec/foo_spec.rb',
+          verdict: 'approve', stages: {}
+        )
+        expect(result[:success]).to be true
+        expect(result[:pull_number]).to eq(99)
+        expect(result[:generation_id]).to eq('gen-flat')
       end
     end
 
