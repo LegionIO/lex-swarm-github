@@ -120,14 +120,21 @@ module Legion
           def build_model_assignments(count, models)
             return Array.new(count) { nil } if models.nil? || models.empty?
 
-            available = models.select do |spec|
+            available = models.filter_map do |raw_spec|
+              unless raw_spec.is_a?(Hash)
+                log.warn('review model spec is not a Hash, skipping')
+                next
+              end
+
+              spec = raw_spec.transform_keys { |k| k.respond_to?(:to_sym) ? k.to_sym : k }
               provider_sym = spec[:provider]&.to_sym
+
               if provider_sym && !provider_available?(provider_sym)
                 log.warn("review provider #{provider_sym} not available, skipping")
-                false
-              else
-                true
+                next
               end
+
+              spec
             end
 
             return Array.new(count) { nil } if available.empty?

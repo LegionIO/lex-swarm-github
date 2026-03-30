@@ -4,13 +4,13 @@
 
 ### Added
 - Multi-provider model diversity for adversarial K-factor PR review (`review_models:` kwarg)
-- `build_model_assignments` cycles available providers, skips unavailable with log warning, backfills with default
+- `build_model_assignments` cycles available providers, skips unavailable; falls back to default only when review_models is nil/empty or all providers unavailable
 - `provider_available?` checks `Settings[:llm][:providers][sym][:enabled]`
 - `PullRequestReviewer` accepts `model:` and `provider:` kwargs, forwarded to `Legion::LLM.chat`
 - `LifecycleSubscriber` forwards `review_models:` from AMQP payload
 - Settings fallback: `codegen.self_generate.github.review_models` (default `[]`)
 
-## [0.3.1] - 2026-03-29
+## [0.3.1] - 2026-03-28
 
 ### Added
 - `Runners::ExtensionLifecycle` — orchestrates autonomous extension github pipeline: branch creation, file commit, PR open, label, optional auto-merge
